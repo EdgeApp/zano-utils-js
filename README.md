@@ -456,51 +456,82 @@ const paymentId: string = generatePaymentId();
 
 ### `mnemonicToSeed`
 
-## Limitations
+Converts a mnemonic seed phrase (25 or 26 words) into either a secret spend key or a full seed hex string.
+
+A **full seed** is the raw 32-byte seed with the mnemonic metadata word indices (timestamp and checksum) appended as big-endian uint16 values. This preserves the original timestamp and checksum so the mnemonic can be reconstructed deterministically later.
+
+#### Parameters
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `seedPhraseRaw` | `string` | — | Raw seed phrase string containing 25 or 26 words. |
+| `full` | `boolean` | `false` | When `true`, returns a full seed hex instead of deriving the secret spend key. |
+
+#### Limitations
 
 - **No support for password-protected seed phrases**: Currently, the library does not handle mnemonic phrases that are encrypted with a password.
 - **No audit flag support**: The library does not yet support the audit flag feature.
 
- @param seedPhraseRaw - Raw seed phrase string (mnemonic) containing 25 or 26 words.
-
- @returns The secret spend key as a hex string, or `false` if parsing failed.
+#### Import and usage
 
 ```ts
 import { mnemonicToSeed } from '@zano-project/zano-utils-js';
-import type { MnemonicToSeedResult } from '@zano-project/zano-utils-js';
 
-const secretSpendKey: MnemonicToSeedResult = mnemonicToSeed('bridge passion scale vast speak mud murder own birthday flight always hair especially tickle crowd shatter tickle deserve hopefully bomb join plan darling aunt beneath give');
+// Derive the secret spend key (default behavior):
+const secretSpendKey: string = mnemonicToSeed('bridge passion scale vast speak mud murder own birthday flight always hair especially tickle crowd shatter tickle deserve hopefully bomb join plan darling aunt beneath give');
+
+// Get the full seed hex (32-byte seed + encoded timestamp + checksum):
+const fullSeedHex: string = mnemonicToSeed('bridge passion scale vast speak mud murder own birthday flight always hair especially tickle crowd shatter tickle deserve hopefully bomb join plan darling aunt beneath give', true);
 ```
 
 #### Returned data mnemonicToSeed
 
+When `full` is `false` (default), returns the 64-character secret spend key hex string.
+
+When `full` is `true`, returns an expanded hex string: the original 32-byte seed (64 hex chars) followed by the word indices for the timestamp word and, if present, the checksum word (each encoded as 4 hex chars). This is 68 hex chars for a 25-word phrase or 72 hex chars for a 26-word phrase.
+
 ```ts
-type MnemonicToSeedResult = string | false;
+type MnemonicToSeedResult = string;
 ```
 ---
 
 ### `seedToMnemonic`
 
-## Warning:
-**Dont use secret spend for creating mnemonic**
+Converts a seed hex string into a mnemonic phrase. The behavior depends on the length of the input:
 
-**You need provide raw seed key, its key using for creating secret spend key and mnemonic**
+- **32 bytes (64 hex chars)** — Treated as a raw seed. The 24 core mnemonic words are derived from the seed, and a timestamp word is generated from the current date along with a checksum word, producing a **26-word** phrase.
+- **34 bytes (68 hex chars)** — Treated as a full seed (v1). The last 2 bytes encode a timestamp word index. The mnemonic is reconstructed deterministically from the embedded index, producing a **25-word** phrase.
+- **36 bytes (72 hex chars)** — Treated as a full seed (v2). The last 4 bytes encode a timestamp word index and a checksum word index. The mnemonic is reconstructed deterministically from the embedded indices, producing a **26-word** phrase.
 
-## Limitations
+The full seed format is useful for storing and restoring mnemonics without relying on the current date for timestamp generation. Use `mnemonicToSeed(phrase, true)` to obtain a full seed, and `seedToMnemonic(fullSeedHex)` to recover the original mnemonic.
+
+#### Warning
+
+**Do not use the secret spend key to create a mnemonic.** You must provide the raw seed key, which is the key used to derive both the secret spend key and the mnemonic.
+
+#### Limitations
 
 - **No support for password-protected seed phrases**: Currently, the library does not handle mnemonic phrases that are encrypted with a password.
 - **No audit flag support**: The library does not yet support the audit flag feature.
+
+#### Import and usage
 
 ```ts
 import { seedToMnemonic } from '@zano-project/zano-utils-js';
 import type { SeedToMnemonicResult } from '@zano-project/zano-utils-js';
 
+// From a raw 32-byte seed (timestamp generated from current date):
 const randomBytes: string = getRandomBytes(64).toString('hex');
-
 const seedPhrase: SeedToMnemonicResult = seedToMnemonic(randomBytes);
+
+// From a full seed (timestamp and checksum restored from embedded indices):
+const fullSeedHex: string = mnemonicToSeed(seedPhrase, true);
+const recoveredPhrase: SeedToMnemonicResult = seedToMnemonic(fullSeedHex);
+// recoveredPhrase === seedPhrase
 ```
 
 #### Returned data seedToMnemonic
+
 ```ts
 type SeedToMnemonicResult = string;
 ```

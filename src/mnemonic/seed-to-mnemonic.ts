@@ -9,6 +9,10 @@ const WALLET_BRAIN_DATE_OFFSET = 1543622400;
 const WALLET_BRAIN_DATE_QUANTUM = 604800;
 const WALLET_BRAIN_DATE_MAX_WEEKS_COUNT = 800;
 const CHECKSUM_MAX = NUMWORDS >> 1;
+const BINARY_SIZE_SEED = 32;
+const WORD_INDEX_SIZE = 2;
+const FULL_SEED_V1_SIZE = BINARY_SIZE_SEED + WORD_INDEX_SIZE;
+const FULL_SEED_V2_SIZE = BINARY_SIZE_SEED + WORD_INDEX_SIZE * 2;
 
 export function seedToMnemonic(keysSeedHex: string): SeedToMnemonicResult {
   if (!keysSeedHex) {
@@ -16,6 +20,12 @@ export function seedToMnemonic(keysSeedHex: string): SeedToMnemonicResult {
   }
 
   const keysSeedBinary: Buffer = Buffer.from(keysSeedHex, 'hex');
+
+  if (keysSeedBinary.length === FULL_SEED_V1_SIZE ||
+      keysSeedBinary.length === FULL_SEED_V2_SIZE) {
+    return fullSeedToMnemonic(keysSeedBinary);
+  }
+
   const mnemonic: string = binaryToText(keysSeedBinary);
 
   const timestamp: number = Math.floor(Date.now() / 1000);
@@ -33,6 +43,23 @@ export function seedToMnemonic(keysSeedHex: string): SeedToMnemonicResult {
   const checksumWord: string = wordByNum((checksumValue << 1) | (auditableFlag & 1));
 
   return `${mnemonic} ${creationTimestampWord} ${checksumWord}`;
+}
+
+function fullSeedToMnemonic(fullSeedBinary: Buffer): string {
+  const keysSeedBinary = fullSeedBinary.subarray(0, BINARY_SIZE_SEED);
+  const mnemonic = binaryToText(keysSeedBinary);
+  const words: string[] = [mnemonic];
+
+  for (let offset = BINARY_SIZE_SEED; offset < fullSeedBinary.length; offset += WORD_INDEX_SIZE) {
+    const wordIndex = fullSeedBinary.readUInt16BE(offset);
+    const word = wordByNum(wordIndex);
+    if (word === '') {
+      throw new Error(`Invalid embedded mnemonic word index: ${wordIndex}`);
+    }
+    words.push(word);
+  }
+
+  return words.join(' ');
 }
 
 function wordByNum(index: number): string {
@@ -69,7 +96,6 @@ function binaryToText(binary: Buffer): string {
 function getWordFromTimestamp(timestamp: number, usePassword: boolean): string {
   const dateOffset: number = Math.max(timestamp - WALLET_BRAIN_DATE_OFFSET, 0);
   let weeksCount = Math.trunc(dateOffset / WALLET_BRAIN_DATE_QUANTUM);
-  console.log(weeksCount);
 
   if (weeksCount >= WALLET_BRAIN_DATE_MAX_WEEKS_COUNT) {
     throw new Error('SEED PHRASE needs to be extended or refactored');

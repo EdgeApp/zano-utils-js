@@ -20,18 +20,19 @@ const BINARY_SIZE_SEED = 32;
  * @param seedPhraseRaw - Raw seed phrase string (mnemonic) containing 25 or 26 words.
  * @returns The secret spend key as a hex string, or `false` if parsing failed.
  */
-export function mnemonicToSeed(seedPhraseRaw: string): MnemonicToSeedResult {
+export function mnemonicToSeed(seedPhraseRaw: string, full = false): MnemonicToSeedResult {
   const seedPhrase: string = seedPhraseRaw.trim();
   const words: string[] = seedPhrase.split(/\s+/);
 
   let keysSeedText: string;
   let timestampWord: string;
+  let checksumWord: string;
 
   if (words.length === SEED_PHRASE_V1_WORDS_COUNT) {
     timestampWord = words.pop()!;
     keysSeedText = words.join(' ');
   } else if (words.length === SEED_PHRASE_V2_WORDS_COUNT) {
-    words.pop(); // drop audit+checksum
+    checksumWord = words.pop()!;
     timestampWord = words.pop()!;
     keysSeedText = words.join(' ');
   } else {
@@ -50,6 +51,26 @@ export function mnemonicToSeed(seedPhraseRaw: string): MnemonicToSeedResult {
   if (!keysSeedBinary.length) {
     console.error('Empty binary seed after conversion');
     return false;
+  }
+
+  if (full) {
+    const extraWords: string[] = [];
+    if (timestampWord != null) {
+      extraWords.push(timestampWord);
+    }
+    if (checksumWord != null) {
+      extraWords.push(checksumWord);
+    }
+    let expandedSeedHex = keysSeedBinary.toString('hex');
+    for (const word of extraWords) {
+      const value = wordsMap.get(word);
+      if (value == null) {
+        console.error('Invalid extra word in mnemonic text:', word);
+        return false;
+      }
+      expandedSeedHex += value.toString(16).padStart(4, '0');
+    }
+    return expandedSeedHex;
   }
 
   const { secretSpendKey } = keysFromDefault(keysSeedBinary, BINARY_SIZE_SEED);
