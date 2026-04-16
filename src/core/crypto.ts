@@ -448,33 +448,27 @@ export function checkSignature(
   publicKey: Buffer,
   signature: { r: Buffer; c: Buffer },
 ): boolean {
-  try {
-    const r: BN = decodeScalar(signature.r);
-    const c: BN = decodeScalar(signature.c);
-    const P: curve.edwards.EdwardsPoint = decodePoint(publicKey);
-    const h: Buffer = fastHash(message);
-    const B: curve.base.BasePoint = ec.curve.g;
+  const r: BN = decodeScalar(signature.r);
+  const c: BN = decodeScalar(signature.c);
+  const P: curve.edwards.EdwardsPoint = decodePoint(publicKey);
+  const h: Buffer = fastHash(message);
+  const B: curve.base.BasePoint = ec.curve.g;
 
-    const R: curve.base.BasePoint = P.mul(c).add(B.mul(r));
-    const bufComm: Buffer = encodePoint(R);
+  const R: curve.base.BasePoint = P.mul(c).add(B.mul(r));
+  const bufComm: Buffer = encodePoint(R);
 
-    const buf = {
-      h,
-      key: publicKey,
-      comm: bufComm,
-    };
+  const buf = {
+    h,
+    key: publicKey,
+    comm: bufComm,
+  };
 
-    const bufForHash: Buffer = Buffer.concat([buf.h, buf.key, buf.comm]);
-    const hashFromBuffer: Buffer = hashToScalar(bufForHash);
+  const bufForHash: Buffer = Buffer.concat([buf.h, buf.key, buf.comm]);
+  const hashFromBuffer: Buffer = hashToScalar(bufForHash);
 
-    const calculatedC: BN = decodeInt(hashFromBuffer);
+  const calculatedC: BN = decodeInt(hashFromBuffer);
 
-    return calculatedC.eq(c);
-
-  } catch (error) {
-    console.error('Error during signature verification:', error.message);
-    return false;
-  }
+  return calculatedC.eq(c);
 }
 
 function getRandomScalar(aPart: Buffer, keysSeedBinarySize: number) {

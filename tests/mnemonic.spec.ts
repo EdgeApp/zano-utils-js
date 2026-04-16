@@ -21,16 +21,12 @@ describe('mnemonic round-trip', () => {
     expect((result as string)).toHaveLength(64);
   });
 
-  it('mnemonicToSeed returns false for invalid word count', () => {
-    const spy = jest.spyOn(console, 'error').mockImplementation();
-    expect(mnemonicToSeed('one two three')).toBe(false);
-    spy.mockRestore();
+  it('mnemonicToSeed throws for invalid word count', () => {
+    expect(() => mnemonicToSeed('one two three')).toThrow('Invalid seed phrase word count');
   });
 
-  it('mnemonicToSeed returns false for empty input', () => {
-    const spy = jest.spyOn(console, 'error').mockImplementation();
-    expect(mnemonicToSeed('')).toBe(false);
-    spy.mockRestore();
+  it('mnemonicToSeed throws for empty input', () => {
+    expect(() => mnemonicToSeed('')).toThrow('Invalid seed phrase word count');
   });
 
   it('seedToMnemonic throws for empty input', () => {

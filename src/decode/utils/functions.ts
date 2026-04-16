@@ -33,13 +33,11 @@ export function parseBigAmountToNumber(str: string): number | null {
     const num = Number(big.toString());
 
     if (!Number.isFinite(num)) {
-      console.error('Value too large for JS number:', str);
-      return null;
+      throw new Error(`Value too large for JS number: ${str}`);
     }
 
     return num;
   } catch (e) {
-    console.error('Invalid numeric string format:', str);
-    return null;
+    throw new Error(`Invalid numeric string format: ${str}`);
   }
 }

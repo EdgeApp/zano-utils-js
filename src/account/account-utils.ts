@@ -24,12 +24,7 @@ function generateAccount(): AccountResult {
 
   const address: string = getMasterAddress(keys.publicSpendKey, keys.publicViewKey);
 
-  try {
-    validateAccount(address, keys.publicSpendKey, keys.publicViewKey, keys.secretSpendKey, keys.secretViewKey);
-  } catch (error) {
-    console.error('Error validating address:', error);
-    throw error.message;
-  }
+  validateAccount(address, keys.publicSpendKey, keys.publicViewKey, keys.secretSpendKey, keys.secretViewKey);
 
   return {
     address,

@@ -123,15 +123,10 @@ function decryptPaymentId(encryptedPaymentId: string, txPubKey: string, secViewK
   return encrypted.toString('hex');
 }
 
-function parseObjectInJson(objectInJson: string): TransactionObject | TransactionObjectV3 | null {
-  try {
-    const decodedData: string = Buffer.from(objectInJson || '', 'base64').toString();
-    const txJson: string = prepareJson(decodedData);
-    return JSON.parse(txJson);
-  } catch (error) {
-    console.error('Error parse txJson:', error.message);
-    return null;
-  }
+function parseObjectInJson(objectInJson: string): TransactionObject | TransactionObjectV3 {
+  const decodedData: string = Buffer.from(objectInJson || '', 'base64').toString();
+  const txJson: string = prepareJson(decodedData);
+  return JSON.parse(txJson);
 }
 
 function prepareJson(decodedData: string): string {

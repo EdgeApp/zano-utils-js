@@ -36,21 +36,18 @@ export function mnemonicToSeed(seedPhraseRaw: string, full = false): MnemonicToS
     timestampWord = words.pop()!;
     keysSeedText = words.join(' ');
   } else {
-    console.error('Invalid seed phrase word count:', words.length);
-    return false;
+    throw new Error(`Invalid seed phrase word count: ${words.length}`);
   }
 
   let keysSeedBinary: Buffer;
   try {
     keysSeedBinary = text2binary(keysSeedText);
   } catch (error) {
-    console.error('Failed to convert seed text to binary:', error);
-    return false;
+    throw new Error(`Failed to convert seed text to binary: ${String(error)}`);
   }
 
   if (!keysSeedBinary.length) {
-    console.error('Empty binary seed after conversion');
-    return false;
+    throw new Error('Empty binary seed after conversion');
   }
 
   if (full) {
@@ -65,8 +62,7 @@ export function mnemonicToSeed(seedPhraseRaw: string, full = false): MnemonicToS
     for (const word of extraWords) {
       const value = wordsMap.get(word);
       if (value == null) {
-        console.error('Invalid extra word in mnemonic text:', word);
-        return false;
+        throw new Error(`Invalid extra word in mnemonic text: ${word}`);
       }
       expandedSeedHex += value.toString(16).padStart(4, '0');
     }
