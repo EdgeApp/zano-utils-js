@@ -7,8 +7,8 @@ export const wordsArray: string[] = phrases.map(p => p.phrase);
 
 const WALLET_BRAIN_DATE_OFFSET = 1543622400;
 const WALLET_BRAIN_DATE_QUANTUM = 604800;
-const WALLET_BRAIN_DATE_MAX_WEEKS_COUNT = 800;
-const CHECKSUM_MAX = NUMWORDS >> 1;
+export const WALLET_BRAIN_DATE_MAX_WEEKS_COUNT = 800;
+export const CHECKSUM_MAX = NUMWORDS >> 1;
 const BINARY_SIZE_SEED = 32;
 const WORD_INDEX_SIZE = 2;
 const FULL_SEED_V1_SIZE = BINARY_SIZE_SEED + WORD_INDEX_SIZE;
@@ -33,11 +33,31 @@ export function seedToMnemonic(keysSeedHex: string): SeedToMnemonicResult {
 
   const timestampFromWord: number = getTimestampFromWord(creationTimestampWord, false);
 
+  const checksumValue: number = computeChecksum(keysSeedBinary, timestampFromWord);
+
+  const auditableFlag = 0;
+  const checksumWord: string = wordByNum((checksumValue << 1) | (auditableFlag & 1));
+
+  return `${mnemonic} ${creationTimestampWord} ${checksumWord}`;
+}
+
+/**
+ * Computes the checksum carried by the last word of a 26-word seed phrase.
+ *
+ * Mirrors `account_base::get_seed_phrase` in Zano core. Only valid for
+ * phrases without a seed password; a password-protected phrase folds the
+ * decrypted seed and the password itself into the hash.
+ *
+ * @param keysSeedBinary - The 32-byte seed the phrase encodes.
+ * @param creationTimestamp - Timestamp decoded from the phrase's timestamp
+ * word, not the raw clock, since the word is only week-granular.
+ */
+export function computeChecksum(keysSeedBinary: Buffer, creationTimestamp: number): number {
   const hashWithTimestamp: Buffer = Buffer.from(fastHash(keysSeedBinary));
-  hashWithTimestamp.writeBigUInt64LE(BigInt(timestampFromWord), 0);
+  hashWithTimestamp.writeBigUInt64LE(BigInt(creationTimestamp), 0);
 
   const checksumHash: Buffer = fastHash(hashWithTimestamp);
-  let checksumValue = Number(checksumHash.readBigUInt64LE(0) % BigInt(CHECKSUM_MAX + 1));
+  const checksumValue = Number(checksumHash.readBigUInt64LE(0) % BigInt(CHECKSUM_MAX + 1));
 
   // The checksum shares its word with the auditable flag as
   // `(checksum << 1) | auditableFlag`, so a checksum of CHECKSUM_MAX would
@@ -45,14 +65,7 @@ export function seedToMnemonic(keysSeedHex: string): SeedToMnemonicResult {
   // maps that case back to zero rather than changing the encoding; see the
   // matching workaround in `account_base::get_seed_phrase` and
   // `account_base::restore_from_seed_phrase`.
-  if (checksumValue === CHECKSUM_MAX) {
-    checksumValue = 0;
-  }
-
-  const auditableFlag = 0;
-  const checksumWord: string = wordByNum((checksumValue << 1) | (auditableFlag & 1));
-
-  return `${mnemonic} ${creationTimestampWord} ${checksumWord}`;
+  return checksumValue === CHECKSUM_MAX ? 0 : checksumValue;
 }
 
 function fullSeedToMnemonic(fullSeedBinary: Buffer): string {
@@ -79,7 +92,7 @@ function wordByNum(index: number): string {
   return entry.phrase;
 }
 
-function numByWord(word: string): number {
+export function numByWord(word: string): number {
   const entry = phrases.find(p => p.phrase === word);
   if (!entry) {
     throw new Error(`Unable to find word "${word}" in mnemonic dictionary`);

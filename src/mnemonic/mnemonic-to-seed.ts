@@ -6,8 +6,8 @@ export const NUMWORDS = 1626;
 
 const wordsMap: Map<string, number> = new Map(phrases.map(item => [item.phrase, item.value]));
 
-const SEED_PHRASE_V1_WORDS_COUNT = 25;
-const SEED_PHRASE_V2_WORDS_COUNT = 26;
+export const SEED_PHRASE_V1_WORDS_COUNT = 25;
+export const SEED_PHRASE_V2_WORDS_COUNT = 26;
 const BINARY_SIZE_SEED = 32;
 
 /**
@@ -73,7 +73,7 @@ export function mnemonicToSeed(seedPhraseRaw: string, full = false): MnemonicToS
   return secretSpendKey;
 }
 
-function text2binary(text: string): Buffer {
+export function text2binary(text: string): Buffer {
   const tokens: string[] = text.trim().split(/\s+/);
 
   if (tokens.length % 3 !== 0) {
