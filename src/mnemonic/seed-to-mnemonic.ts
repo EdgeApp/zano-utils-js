@@ -37,7 +37,17 @@ export function seedToMnemonic(keysSeedHex: string): SeedToMnemonicResult {
   hashWithTimestamp.writeBigUInt64LE(BigInt(timestampFromWord), 0);
 
   const checksumHash: Buffer = fastHash(hashWithTimestamp);
-  const checksumValue: number = Number(checksumHash.readBigUInt64LE(0) % BigInt(CHECKSUM_MAX + 1)) || 0;
+  let checksumValue = Number(checksumHash.readBigUInt64LE(0) % BigInt(CHECKSUM_MAX + 1));
+
+  // The checksum shares its word with the auditable flag as
+  // `(checksum << 1) | auditableFlag`, so a checksum of CHECKSUM_MAX would
+  // address index NUMWORDS -- one past the end of the dictionary. Zano core
+  // maps that case back to zero rather than changing the encoding; see the
+  // matching workaround in `account_base::get_seed_phrase` and
+  // `account_base::restore_from_seed_phrase`.
+  if (checksumValue === CHECKSUM_MAX) {
+    checksumValue = 0;
+  }
 
   const auditableFlag = 0;
   const checksumWord: string = wordByNum((checksumValue << 1) | (auditableFlag & 1));
@@ -52,18 +62,21 @@ function fullSeedToMnemonic(fullSeedBinary: Buffer): string {
 
   for (let offset = BINARY_SIZE_SEED; offset < fullSeedBinary.length; offset += WORD_INDEX_SIZE) {
     const wordIndex = fullSeedBinary.readUInt16BE(offset);
-    const word = wordByNum(wordIndex);
-    if (word === '') {
+    if (wordIndex >= phrases.length) {
       throw new Error(`Invalid embedded mnemonic word index: ${wordIndex}`);
     }
-    words.push(word);
+    words.push(wordByNum(wordIndex));
   }
 
   return words.join(' ');
 }
 
 function wordByNum(index: number): string {
-  return phrases[index]?.phrase ?? '';
+  const entry = phrases[index];
+  if (entry == null) {
+    throw new Error(`Mnemonic word index out of range: ${index}`);
+  }
+  return entry.phrase;
 }
 
 function numByWord(word: string): number {
