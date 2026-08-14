@@ -74,11 +74,8 @@ function fullSeedToMnemonic(fullSeedBinary: Buffer): string {
   const words: string[] = [mnemonic];
 
   for (let offset = BINARY_SIZE_SEED; offset < fullSeedBinary.length; offset += WORD_INDEX_SIZE) {
-    const wordIndex = fullSeedBinary.readUInt16BE(offset);
-    if (wordIndex >= phrases.length) {
-      throw new Error(`Invalid embedded mnemonic word index: ${wordIndex}`);
-    }
-    words.push(wordByNum(wordIndex));
+    // `wordByNum` makes the same range check, with its own message:
+    words.push(wordByNum(fullSeedBinary.readUInt16BE(offset)));
   }
 
   return words.join(' ');
@@ -92,12 +89,42 @@ function wordByNum(index: number): string {
   return entry.phrase;
 }
 
+const valuesByWord: Map<string, number> = new Map(
+  phrases.map(item => [item.phrase, item.value]),
+);
+
 export function numByWord(word: string): number {
-  const entry = phrases.find(p => p.phrase === word);
-  if (!entry) {
+  const value = valuesByWord.get(word);
+  if (value == null) {
     throw new Error(`Unable to find word "${word}" in mnemonic dictionary`);
   }
-  return entry.value;
+  return value;
+}
+
+/**
+ * Reports whether a creation-timestamp word index carries the "password
+ * used" flag, which Zano encodes by offsetting the index past the range a
+ * real date can reach.
+ *
+ * Takes the index rather than the word so callers that already resolved one
+ * do not look it up twice.
+ */
+export function isPasswordProtectedIndex(timestampValue: number): boolean {
+  return timestampValue >= WALLET_BRAIN_DATE_MAX_WEEKS_COUNT;
+}
+
+/**
+ * Reports whether a creation-timestamp word carries the "password used"
+ * flag.
+ *
+ * The rule is a single comparison, but it is read at three sites and
+ * written at a fourth, so it lives here rather than being spelled out at
+ * each one.
+ *
+ * @throws If the word is outside the dictionary.
+ */
+export function isPasswordProtectedTimestampWord(word: string): boolean {
+  return isPasswordProtectedIndex(numByWord(word));
 }
 
 function binaryToText(binary: Buffer): string {
@@ -141,7 +168,7 @@ function getWordFromTimestamp(timestamp: number, usePassword: boolean): string {
 export function getTimestampFromWord(word: string, passwordUsed: boolean): number {
   let weeks = numByWord(word);
 
-  if (weeks >= WALLET_BRAIN_DATE_MAX_WEEKS_COUNT) {
+  if (isPasswordProtectedIndex(weeks)) {
     weeks -= WALLET_BRAIN_DATE_MAX_WEEKS_COUNT;
     passwordUsed = true;
   } else {

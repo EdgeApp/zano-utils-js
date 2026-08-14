@@ -5,6 +5,7 @@ import {
   seedToMnemonic,
   verifySeedPhrase,
 } from '../src/mnemonic';
+import { isPasswordProtectedTimestampWord } from '../src/mnemonic/seed-to-mnemonic';
 import { phrases } from '../src/mnemonic/consts/phrases';
 import { WALLET_BRAIN_DATE_MAX_WEEKS_COUNT } from '../src/mnemonic/seed-to-mnemonic';
 
@@ -127,5 +128,35 @@ describe('isSeedPhrasePasswordProtected', () => {
       phrases[WALLET_BRAIN_DATE_MAX_WEEKS_COUNT - 1].phrase,
     );
     expect(isSeedPhrasePasswordProtected(boundary)).toBe(false);
+  });
+});
+
+describe('isPasswordProtectedTimestampWord', () => {
+  // Zano marks a phrase as password-protected by pushing the
+  // creation-timestamp word index past WALLET_BRAIN_DATE_MAX_WEEKS_COUNT
+  // (800), so the flag is decided entirely by which side of that the word
+  // sits on. `ugly` is the last unflagged word and `among` the first
+  // flagged one.
+  it('splits on the word index, not the word', () => {
+    expect(isPasswordProtectedTimestampWord('slide')).toBe(false);
+    expect(isPasswordProtectedTimestampWord('ugly')).toBe(false);
+    expect(isPasswordProtectedTimestampWord('among')).toBe(true);
+    expect(isPasswordProtectedTimestampWord('blade')).toBe(true);
+  });
+
+  it('agrees with the whole-phrase check', () => {
+    const withWord = (word: string): string =>
+      `${new Array(24).fill('like').join(' ')} ${word} mom`;
+    for (const word of ['slide', 'ugly', 'among', 'blade']) {
+      expect(isSeedPhrasePasswordProtected(withWord(word))).toBe(
+        isPasswordProtectedTimestampWord(word),
+      );
+    }
+  });
+
+  it('rejects a word outside the dictionary', () => {
+    expect(() => isPasswordProtectedTimestampWord('notazanoword')).toThrow(
+      'notazanoword',
+    );
   });
 });

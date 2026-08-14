@@ -7,8 +7,9 @@ import {
   CHECKSUM_MAX,
   computeChecksum,
   getTimestampFromWord,
+  isPasswordProtectedIndex,
+  isPasswordProtectedTimestampWord,
   numByWord,
-  WALLET_BRAIN_DATE_MAX_WEEKS_COUNT,
 } from './seed-to-mnemonic';
 
 const KEYS_SEED_WORDS_COUNT = 24;
@@ -51,7 +52,7 @@ function splitSeedPhrase(seedPhraseRaw: string): SeedPhraseParts {
  */
 export function isSeedPhrasePasswordProtected(seedPhraseRaw: string): boolean {
   const { timestampWord } = splitSeedPhrase(seedPhraseRaw);
-  return numByWord(timestampWord) >= WALLET_BRAIN_DATE_MAX_WEEKS_COUNT;
+  return isPasswordProtectedTimestampWord(timestampWord);
 }
 
 /**
@@ -76,7 +77,7 @@ export function verifySeedPhrase(seedPhraseRaw: string): boolean {
   const timestampValue: number = numByWord(timestampWord);
   const keysSeedBinary: Buffer = text2binary(keysSeedText);
 
-  if (timestampValue >= WALLET_BRAIN_DATE_MAX_WEEKS_COUNT) {
+  if (isPasswordProtectedIndex(timestampValue)) {
     throw new Error('Cannot verify a password-protected seed phrase');
   }
 
